@@ -23,7 +23,11 @@ public:
     MyVector() : _data(new T[1]), _size(0), _capacity(1) {}
 
     // Constructor with size.
-    MyVector(size_t size) : _data(new T[size] {}), _size(size), _capacity(size) {
+    MyVector(size_t size) : _size(size) {
+        if (size == 0)
+            _capacity = 1;
+
+        _data = new T[_capacity] {};
     }
 
     // Copy constructor.
@@ -111,5 +115,81 @@ public:
         if (_size == 0) throw std::logic_error("Vector is empty.");
         return _data[_size - 1];
     }
+    #pragma endregion
+
+    #pragma region Vector change functions
+
+    //  Sets ```_size``` to 0.
+    void clear() noexcept { _size = 0;}
+
+    // Changes the ```_capacity``` to ```new_capacity```. If ```new_capacity``` is equal or smaller than current does nothing.
+    // Can throw std::exception if there is a problem with element copying.
+    void reserve(size_t new_capacity) {
+        if (new_capacity <= _capacity)
+            return;  // Exit if new capacity is equal or smaller.
+
+        T* new_data = new T[new_capacity];
+
+        try {
+            if constexpr (std::is_nothrow_move_assignable_v<T>
+                          || !std::is_copy_assignable_v<T>) {
+                for (size_t i = 0; i < _size; ++i) 
+                    new_data[i] = std::move(_data[i]);
+            } else {
+                for (size_t i = 0; i < _size; ++i) 
+                    new_data[i] = _data[i]; 
+            }
+        } catch (...) {
+            delete[] new_data;  // Deleting memory if there is an error of element copying.
+            throw;
+        }
+
+        delete[] _data;  // Free old memory.
+        _data = new_data;  // Moving to the pointer of resized array.
+
+        _capacity = new_capacity;  // Updating the capacity.
+    }
+
+    // Resizes vector to ```new_size```. If ```new_size``` is bigger than current capacity, doubles capacity.
+    void resize(size_t new_size) {
+        // ```new_size < _capacity``` case: Simply decreasing _size and quiting.
+        if (new_size <= _capacity) {
+            _size = new_size;
+            return;
+        }
+
+        // Increasing ```_capacity```.
+        while (new_size > _capacity)
+            reserve(_capacity * 2);
+        
+        _size = new_size;
+    };
+
+    // Adds an element to the end of container.
+    void push_back(const T& obj) {
+        if ((_size + 1) > _capacity)
+            reserve(_capacity * 2);
+
+        _data[_size] = obj;
+
+        ++_size;
+    }
+    // rvalue overload of ```push_back```.
+    void push_back(T&& obj) {
+        if ((_size + 1) > _capacity)
+            reserve(_capacity * 2);
+
+        _data[_size] = std::move(obj);
+
+        ++_size;
+    }
+
+    // Deletes last element of vector. if vector is empty throws and std::logic_error.
+    void pop_back() {
+        if (_size == 0)
+            throw std::logic_error("Vector is empty.");
+        --_size;
+    }
+
     #pragma endregion
 };
